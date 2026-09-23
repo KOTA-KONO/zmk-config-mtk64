@@ -17,9 +17,9 @@ menu "MTK64 Trackball Rate Limit"
 
 config ZMK_TRACKBALL_REPORT_INTERVAL_USB_US
     int "USB trackball report interval (microseconds)"
-    default 1000
+    default 4000
     help
-      Report interval for USB in microseconds (default: 1000us = 1ms / 1000Hz).
+      Report interval for USB in microseconds (default: 4000us = 4.0ms / 250Hz flat pacing for PMW3610).
 
 config ZMK_TRACKBALL_REPORT_INTERVAL_BLE_US
     int "BLE trackball report interval (microseconds)"

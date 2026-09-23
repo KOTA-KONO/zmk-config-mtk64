@@ -8,10 +8,10 @@
 #include <zephyr/kernel.h>
 #include <zmk/event_manager.h>
 
-struct zmk_paw32xx_cpi_changed {
+struct zmk_pmw3610_cpi_changed {
     uint16_t cpi;
 };
 
-ZMK_EVENT_DECLARE(zmk_paw32xx_cpi_changed);
+ZMK_EVENT_DECLARE(zmk_pmw3610_cpi_changed);
 
-uint16_t zmk_paw32xx_cpi_get_current(void);
+uint16_t zmk_pmw3610_cpi_get_current(void);

@@ -2,7 +2,7 @@
 set -e
 
 # ==============================================================================
-# mtk64ebt 直接PC接続 (BLE Split) ローカルビルドスクリプト (right_left_rev4)
+# mtk64ebt 直接PC接続 (BLE Split) ローカルビルドスクリプト (right_left_rev3)
 # ==============================================================================
 
 # Base directories
@@ -30,6 +30,7 @@ build_right_direct() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_R rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DSNIPPET="studio-rpc-usb-uart" \
       -DCONFIG_ZMK_STUDIO=y \
       -DCONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS=1
@@ -47,6 +48,7 @@ build_right_foot() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_R rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DSNIPPET="studio-rpc-usb-uart" \
       -DCONFIG_ZMK_STUDIO=y \
       -DCONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS=2
@@ -63,7 +65,8 @@ build_left_direct() {
       -DZephyr-sdk_DIR="$SDK_DIR" \
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_L rgbled_adapter" \
-      -DZMK_CONFIG="${REPO_ROOT}/config"
+      -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n
     cp "${WORKSPACE}/build/left_direct/zephyr/zmk.uf2" "${OUTPUT_DIR}/mtk64_L.uf2"
     echo "-> Left Peripheral (BLE) firmware built: ${OUTPUT_DIR}/mtk64_L.uf2"
 }
@@ -77,7 +80,8 @@ build_foot_direct() {
       -DZephyr-sdk_DIR="$SDK_DIR" \
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_FOOT rgbled_adapter" \
-      -DZMK_CONFIG="${REPO_ROOT}/config"
+      -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n
     cp "${WORKSPACE}/build/foot_direct/zephyr/zmk.uf2" "${OUTPUT_DIR}/mtk64_FOOT.uf2"
     echo "-> Foot Switch (BLE) firmware built: ${OUTPUT_DIR}/mtk64_FOOT.uf2"
 }
@@ -92,6 +96,7 @@ build_leftball_left() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_leftball_L rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DSNIPPET="studio-rpc-usb-uart" \
       -DCONFIG_ZMK_STUDIO=y \
       -DCONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS=1
@@ -109,6 +114,7 @@ build_leftball_left_foot() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_leftball_L rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DSNIPPET="studio-rpc-usb-uart" \
       -DCONFIG_ZMK_STUDIO=y \
       -DCONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS=2
@@ -125,7 +131,8 @@ build_leftball_right() {
       -DZephyr-sdk_DIR="$SDK_DIR" \
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_leftball_R rgbled_adapter" \
-      -DZMK_CONFIG="${REPO_ROOT}/config"
+      -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n
     cp "${WORKSPACE}/build/leftball_right/zephyr/zmk.uf2" "${OUTPUT_DIR}/mtk64_R_leftball.uf2"
     echo "-> Left-Ball Right Peripheral firmware built: ${OUTPUT_DIR}/mtk64_R_leftball.uf2"
 }
@@ -139,7 +146,8 @@ build_reset() {
       -DZephyr-sdk_DIR="$SDK_DIR" \
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="settings_reset" \
-      -DZMK_CONFIG="${REPO_ROOT}/config"
+      -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n
     cp "${WORKSPACE}/build/reset/zephyr/zmk.uf2" "${OUTPUT_DIR}/settings_reset.uf2"
     echo "-> Settings reset firmware built: ${OUTPUT_DIR}/settings_reset.uf2"
 }

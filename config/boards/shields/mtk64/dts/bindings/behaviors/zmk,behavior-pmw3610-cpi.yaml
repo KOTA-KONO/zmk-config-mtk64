@@ -1,9 +1,9 @@
 # Copyright (c) 2026 The ZMK Contributors
 # SPDX-License-Identifier: MIT
 
-description: Behavior to control PAW3222 CPI resolution
+description: Behavior to control PMW3610 CPI resolution
 
-compatible: "zmk,behavior-paw32xx-cpi"
+compatible: "zmk,behavior-pmw3610-cpi"
 
 include: zero_param.yaml
 
