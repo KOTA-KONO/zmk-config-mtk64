@@ -99,7 +99,7 @@ jobs:
 
           cd ..
           
-          echo "TAG_NAME=latest-dongle-rev4" >> $GITHUB_ENV
+          echo "TAG_NAME=latest-dongle-rev3" >> $GITHUB_ENV
 
       - name: Update GitHub Release
         uses: ncipollo/release-action@v1
@@ -108,8 +108,8 @@ jobs:
           allowUpdates: true
           removeArtifacts: false
           artifacts: "*.zip"
-          body: "Automated pre-built firmware packages for mtk64ebt (4 Dongle ESB configurations on right_left_dongle_rev4)"
-          name: "Latest Dongle Firmware (mtk64ebt right_left_dongle_rev4)"
+          body: "Automated pre-built firmware packages for mtk64ebt (5 Dongle configurations on Rev3)"
+          name: "Latest Dongle Firmware (mtk64ebt Rev3)"
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -123,16 +123,16 @@ jobs:
           fi
           
           git clone https://x-access-token:${PAT_TOKEN}@github.com/mentako-ya/mtk64ebt.git mtk64ebt-repo
-          mkdir -p mtk64ebt-repo/firmware/rev4
-          cp *.zip mtk64ebt-repo/firmware/rev4/
+          mkdir -p mtk64ebt-repo/firmware/rev3
+          cp *.zip mtk64ebt-repo/firmware/rev3/
           
           cd mtk64ebt-repo
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add firmware/rev4/
+          git add firmware/rev3/
           
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Auto-update Rev4 Dongle firmware ZIPs from zmk-config-mtk64@${{ github.sha }}"
+            git commit -m "Auto-update Rev3 Dongle firmware ZIPs from zmk-config-mtk64@${{ github.sha }}"
             git push origin main
           else
             echo "No changes in firmware ZIP. Skipping push."

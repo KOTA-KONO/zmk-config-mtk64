@@ -1,118 +1,68 @@
-# mtk64ebt Rev4 ファームウェア (zmk-config-mtk64)
+# mtk64ebt Rev3 ドングルファームウェア (zmk-config-mtk64)
 
-mtk64ebt Rev4 用の ZMK ファームウェアリポジトリです。
+mtk64ebt Rev3 用の ZMK ファームウェア（1000Hz Nordic ESB ドングル接続構成）リポジトリです。
+PC に接続した専用 USB ドングルを Central（親機）とし、左右キーボードおよびフットスイッチから **Nordic ESB (Enhanced ShockBurst)** により超低遅延通信を行います。
 
-### Rev4 と Rev3 以前の違い
+Rev4 で培われた最新の ZMK 統合機能（Auto Mouse Layer、スクロール反転、動的CPI切替、ZMK Studio対応、ドングルOLED表示）を、Rev3 のハードウェア仕様（PixArt PMW3610 トラックボール）に合わせて最適化・移植しています。
 
-| 比較項目 | Rev4（本リポジトリ） | Rev3 以前 |
+### Rev3 ドングル接続の主な特徴
+
+* **Zephyr 公式純正 PMW3610 ドライバの採用**:
+  外部モジュール依存を完全に撤廃し、Zephyr upstream 純正の `input_pmw3610` ドライバを統合。
+* **1000Hz 超低遅延 ESB 通信 & 軽量バッテリー駆動**:
+  ペリフェラル（左右手・フットスイッチ）は子機として動作し、超軽量な ESB 通信により消費電力を最小化しながら、キーストロークやトラックボール操作を極限まで低遅延でドングル親機へ送信します。
+* **動的 CPI 変更（200 〜 3200 CPI） & ドングル OLED 表示**:
+  キーボード上のキー操作（`&cpi_inc`, `&cpi_dec`）でリアルタイムに感度を 15 段階で調整可能。設定値はフラッシュメモリ（NVS）に自動永続化され、ドングル OLED 画面上に現在の CPI がリアルタイム表示されます。
+* **Auto Mouse Layer (AML) & スクロール方向反転**:
+  ボールを転がすと自動でマウス操作レイヤーへ遷移する AML 機能や、スクロール方向の切り替え（通常 ⇔ 反転 / ナチュラルスクロール）をワンキーで切り替え可能です。
+* **ZMK Studio 対応**:
+  ドングルを USB 接続した状態で、ブラウザやアプリからリアルタイムにキーマップを変更できます。
+
+> [!NOTE]
+> トラックボールセンサーとして **PixArt PMW3610** を搭載した **mtk64ebt Rev3** 向けのファームウェアです。
+> ※ ドングルを使用しない Bluetooth 直接接続（BLE Split）については、[`right_left_rev3`](https://github.com/mentako-ya/zmk-config-mtk64/tree/right_left_rev3) ブランチをご参照ください。
+
+---
+
+## 提供ファームウェアパッケージ (ZIP)
+
+本ブランチの GitHub Actions 自動ビルドにより、以下の 5 種類のドングル構成に対応したファームウェアパッケージが生成・配布されます。
+
+| パッケージ名 (ZIP) | 構成内容 | 含まれるファームウェア (.uf2) |
 | :--- | :--- | :--- |
-| **トラックボールセンサー** | **PAW3222** にアップデート | 従来センサー |
-| **ドングル通信プロトコル** | **Nordic ESB** を採用<br>ペリフェラル $\to$ ドングル間を超低遅延通信（最大 1000Hz） | BLE (Bluetooth Low Energy) 通信 |
+| **`mtk64ebt_Right_Left_Dongle_disp_foot.zip`** | 左右＋ドングルOLED＋フット | `mtk64_DONGLE_display.uf2`<br>`mtk64_R_dongle.uf2`<br>`mtk64_L_dongle.uf2`<br>`mtk64_FOOT.uf2`<br>`settings_reset.uf2` |
+| **`mtk64ebt_Right_Left_Dongle_foot.zip`** | 左右＋ドングル（画面なし）＋フット | `mtk64_DONGLE.uf2`<br>`mtk64_R_dongle.uf2`<br>`mtk64_L_dongle.uf2`<br>`mtk64_FOOT.uf2`<br>`settings_reset.uf2` |
+| **`mtk64ebt_Right_Left_Dongle_display.zip`** | 左右＋ドングルOLED | `mtk64_DONGLE_display.uf2`<br>`mtk64_R_dongle.uf2`<br>`mtk64_L_dongle.uf2`<br>`settings_reset.uf2` |
+| **`mtk64ebt_Right_Left_Dongle.zip`** | 左右＋ドングル（画面なし） | `mtk64_DONGLE.uf2`<br>`mtk64_R_dongle.uf2`<br>`mtk64_L_dongle.uf2`<br>`settings_reset.uf2` |
+| **`mtk64ebt_Right_Left_Dongle_disp_leftball.zip`** | 左ボール右エンコーダー＋ドングルOLED | `mtk64_DONGLE_display.uf2`<br>`mtk64_L_leftball.uf2`<br>`mtk64_R_leftball.uf2`<br>`settings_reset.uf2` |
 
-* **トラックボールセンサーの刷新**: トラックボールセンサーが **PAW3222** にアップデートされ、高精度な操作とリアルタイム CPI 変更に対応しました。
-* **超低遅延 ESB 通信（ドングル構成）**: ドングル使用時に、ペリフェラル（左右手・フットスイッチ）からドングル間の無線通信に **Nordic ESB (Enhanced ShockBurst)** を使用し、最大 1000Hz (1ms) の超低遅延レスポンスを実現しています。
-
-> [!IMPORTANT]
-> センサーや通信仕様の変更に伴い、**Rev4 と Rev3 以前でファームウェアの互換性はありません**。
-> mtk64ebt Rev3 以前のキーボードをお使いの場合は、各 `_rev3` ブランチ（例: [right_left_rev3 ブランチ](https://github.com/mentako-ya/zmk-config-mtk64/tree/right_left_rev3#readme)）を参照してください。
+* **配布先**: [Releases (latest-dongle-rev3)](https://github.com/mentako-ya/zmk-config-mtk64/releases/tag/latest-dongle-rev3) および [mtk64ebt リポジトリ (`firmware/rev3/`)](https://github.com/mentako-ya/mtk64ebt/tree/main/firmware/rev3)
 
 ---
 
-## ブランチ構成について
+## ドングル接続の手順
 
-本リポジトリでは、接続方式に応じてファームウェアを **2つのブランチ** に分離して管理・ビルドしています。
-
-* **[`right_left_rev4`](https://github.com/mentako-ya/zmk-config-mtk64/tree/right_left_rev4)**（Bluetooth接続 / ドングル不要）
-  * `mtk64ebt_Right_Left.zip`（左右構成）
-  * `mtk64ebt_Right_Left_Foot.zip`（左右＋フットスイッチ）
-  * `mtk64ebt_Right_Left_leftball.zip`（左ボール右エンコーダー）
-  * `mtk64ebt_Right_Left_Foot_leftball.zip`（左ボール＋フット）
-* **[`right_left_dongle_rev4`](https://github.com/mentako-ya/zmk-config-mtk64/tree/right_left_dongle_rev4)**（1000Hz 超低遅延 ESB ドングル接続）
-  * `mtk64ebt_Right_Left_Dongle_disp_foot.zip`（左右＋ドングルOLED＋フット）
-  * `mtk64ebt_Right_Left_Dongle_foot.zip`（左右＋ドングル画面なし＋フット）
-  * `mtk64ebt_Right_Left_Dongle_display.zip`（左右＋ドングルOLED）
-  * `mtk64ebt_Right_Left_Dongle.zip`（左右＋ドングル画面なし）
-  * `mtk64ebt_Right_Left_Dongle_disp_leftball.zip`（左ボール右エンコーダー＋ドングルOLED）
-
-### 接続方式の比較と選び方
-
-| 比較項目 | ① Bluetooth接続（ドングル不要）【[`right_left_rev4`](https://github.com/mentako-ya/zmk-config-mtk64/tree/right_left_rev4)】 | ② 1000Hz ドングル接続【[`right_left_dongle_rev4`](https://github.com/mentako-ya/zmk-config-mtk64/tree/right_left_dongle_rev4)】 |
-| :--- | :--- | :--- |
-| **接続形態** | PC ↔ 右手 (Central) ↔ 左手 / フット | PC ↔ ドングル (Central) ↔ 左右手 / フット |
-| **通信方式** | Bluetooth Low Energy (BLE Split) | 1000Hz Nordic ESB (超低遅延通信) |
-| **ドングル** | **不要**（PC本体のBluetoothでペアリング） | **必要**（専用ドングル親機をPCにUSB接続） |
-| **ポーリングレート** | 133Hz（BLE規格の高速パラメータ） | **1000Hz (1ms)**（ゲーミングマウス同等） |
-| **バッテリー持ち** | 右手側が親機（Central）として常時通信・管理を行うため、右手側の電池消費が早い | **非常に長持ち**<br>左右ともに子機（Peripheral）動作となり、軽量な ESB 通信により消費電力を最小化 |
-| **ディスプレイ** | キーボード本体のLEDインジケータ | ドングル上のOLED画面（BongoCat/CPI/レイヤー表示） |
-| **こんな方におすすめ** | ・ノートPCや出先でドングルなしで手軽に使いたい<br>・USBポートを使わずに身軽に接続したい | ・**キーボードのバッテリーを長持ちさせたい**<br>・FPSやゲーム、高速マウス操作で最速の応答性を求めたい<br>・ドングル画面でアニメーションや状態確認を楽しみたい |
+1. **ドングルの接続**:
+   * ドングル（Seeed XIAO BLE）を PC の USB ポートに接続します。
+2. **ペリフェラル（左右手・フットスイッチ）の起動**:
+   * 各キーボードのバッテリー駆動スイッチを ON にします。
+   * ドングルおよび各子機基板上のリセットボタンを 1 回押して通信を開始します。
+3. **接続状態の確認**:
+   * ドングル OLED 画面（ディスプレイ付き構成時）に、左右手およびフットスイッチのバッテリー残量（R/L/F）、現在のレイヤー名、BongoCat アニメーション、CPI 感度が表示されます。
 
 ---
 
-## 各ブランチの詳細
-
-### 1. `right_left_rev4` ブランチ（Bluetooth接続 / BLE Split）
-
-ドングルを使用せず、PC とキーボード（Central 親機）を Bluetooth で直接ペアリングする標準構成です。
-ドングルが手元にない外出先やノート PC 環境でも、キーボード単体で手軽に使用できます。
-※標準構成では右手（`mtk64_R`）、左ボール構成では左手（`mtk64_L_leftball`）が Central 親機として動作し、133.3Hz（7.5ms）の超低遅延 BLE 通信を行います。
-
-* **ブランチ**: **[`right_left_rev4`](https://github.com/mentako-ya/zmk-config-mtk64/tree/right_left_rev4)**
-* **提供ファームウェアパッケージ (ZIP)**:
-  1. **左右構成**: `mtk64ebt_Right_Left.zip`
-     - 含まれるファイル: `mtk64_R.uf2` (Central), `mtk64_L.uf2` (Peripheral), `settings_reset.uf2`
-  2. **左右＋フットスイッチ**: `mtk64ebt_Right_Left_Foot.zip`
-     - 含まれるファイル: `mtk64_R.uf2` (Central 枠=2), `mtk64_L.uf2` (Peripheral), `mtk64_FOOT.uf2` (Peripheral), `settings_reset.uf2`
-  3. **左ボール右エンコーダー**: `mtk64ebt_Right_Left_leftball.zip`
-     - 含まれるファイル: `mtk64_L_leftball.uf2` (Central), `mtk64_R_leftball.uf2` (Peripheral), `settings_reset.uf2`
-  4. **左ボール右エンコーダー＋フットスイッチ**: `mtk64ebt_Right_Left_Foot_leftball.zip`
-     - 含まれるファイル: `mtk64_L_leftball.uf2` (Central 枠=2), `mtk64_R_leftball.uf2` (Peripheral), `mtk64_FOOT.uf2` (Peripheral), `settings_reset.uf2`
-
-#### キーボードのBluetooth接続手順
-1. キーボードのバッテリー駆動スイッチを ON にします。
-2. セントラル親機（標準: 右手 / 左ボール: 左手）および子機基板上のリセットボタンを 1 回押して左右間をペアリングします。
-3. PC の Bluetooth 設定画面を開き、検出された **`mtk64`** を選択して接続します（通常は数字コード入力不要でワンクリック接続）。
-4. **接続状態の確認（LED）**:
-   * セントラル親機側 LED: 接続中🔵、ペアリング待機中🟡、切断中🔴
-   * ペリフェラル子機側 LED: セントラル接続中🔵、切断中🔴
-
-
----
-
-### 2. `right_left_dongle_rev4` ブランチ（1000Hz 超低遅延 ESB ドングル接続）
-
-PC に接続した専用 USB ドングルを Central 親機とし、左右キーボードおよびフットスイッチを 1000Hz ポーリング（1ms）の超低遅延 Nordic ESB プロトコルで通信させるハイパフォーマンス構成です。
-
-* **ブランチ**: **[`right_left_dongle_rev4`](https://github.com/mentako-ya/zmk-config-mtk64/tree/right_left_dongle_rev4)**
-* **提供ファームウェアパッケージ (ZIP)**:
-  1. **左右＋ドングルOLED＋フット**: `mtk64ebt_Right_Left_Dongle_disp_foot.zip`
-     - 含まれるファイル: `mtk64_DONGLE_display.uf2`, `mtk64_R_dongle.uf2`, `mtk64_L_dongle.uf2`, `mtk64_FOOT_dongle.uf2`, `settings_reset.uf2`
-  2. **左右＋ドングル（画面なし）＋フット**: `mtk64ebt_Right_Left_Dongle_foot.zip`
-     - 含まれるファイル: `mtk64_DONGLE.uf2`, `mtk64_R_dongle.uf2`, `mtk64_L_dongle.uf2`, `mtk64_FOOT_dongle.uf2`, `settings_reset.uf2`
-  3. **左右＋ドングルOLED**: `mtk64ebt_Right_Left_Dongle_display.zip`
-     - 含まれるファイル: `mtk64_DONGLE_display.uf2`, `mtk64_R_dongle.uf2`, `mtk64_L_dongle.uf2`, `settings_reset.uf2`
-  4. **左右＋ドングル（画面なし）**: `mtk64ebt_Right_Left_Dongle.zip`
-     - 含まれるファイル: `mtk64_DONGLE.uf2`, `mtk64_R_dongle.uf2`, `mtk64_L_dongle.uf2`, `settings_reset.uf2`
-  5. **左ボール右エンコーダー＋ドングルOLED**: `mtk64ebt_Right_Left_Dongle_disp_leftball.zip`
-     - 含まれるファイル: `mtk64_DONGLE_display.uf2`, `mtk64_L_leftball.uf2`, `mtk64_R_leftball.uf2`, `settings_reset.uf2`
-
-#### ドングル接続の特長
-* **超低遅延 1000Hz ポーリング**: トラックボールやキーストロークの遅延を極限まで削減。
-* **OLED ディスプレイ**: 有機EL画面に現在のレイヤー名、BongoCat アニメーション、WPM（タイピング速度）、リアルタイム CPI 感度、モディファイア状態を表示。
-* **左ボール変則構成**: 左手にトラックボール、右手にエンコーダーを配置したハードウェア構成にも専用ファームウェアで完全対応。
-
----
-
-## 共通機能・操作方法 (Rev4)
+## 機能と操作方法 (Rev3)
 
 ### 1. ZMK Studio でのリアルタイムキーマップ変更
-Rev4 では、ソースコードを書き換えて再ビルドすることなく、ブラウザやアプリから直感的にキーマップを変更できます。
+ドングル親機が ZMK Studio に対応しています。ソースコードを書き換えて再ビルドすることなく、ブラウザやアプリから直感的にキーマップを変更できます。
 
-* **ブラウザ版**: 右手キーボード（Bluetooth接続時）またはドングル（ドングル接続時）を USB 接続し、[https://zmk.studio/](https://zmk.studio/) にアクセス。
-* **アプリ版**: [https://zmk.studio/download](https://zmk.studio/download) からダウンロード。無線接続のままでもキーマップ変更が可能です。
+* **ブラウザ版**: ドングルを USB 接続し、[https://zmk.studio/](https://zmk.studio/) にアクセス。
+* **アプリ版**: [https://zmk.studio/download](https://zmk.studio/download) からダウンロード。
 * ※ ロックされている場合は、レイヤー1 右手右上の **`&studio_unlock`** キーを押して UNLOCK してください。
 
 ### 2. トラックボール機能のリアルタイム制御（最右列キー）
-トラックボールの各種設定（CPI感度、Auto Mouse Layer、スクロール方向反転）は、**レイヤー 1（精密モード）の右手最右列に縦一列で集約**されています。各設定値は Xiao BLE 内部のフラッシュメモリ（NVS）に自動保存され、電源オフや再起動後も状態を維持します。
+トラックボールの各種設定（CPI感度、Auto Mouse Layer、スクロール方向反転）は、**レイヤー 1（精密モード）の右手最右列に縦一列で集約**されています。各設定値はフラッシュメモリ（NVS）に自動保存され、電源オフや再起動後も状態を維持します。
 
 > [!NOTE]
 > 通常マウスモードである **レイヤー 2（MSE）** では、マウス操作中の意図しないキー誤入力を防止するため調整キーを配置せず、透過（`&trans`）としています。トラックボールの設定変更は **レイヤー 1（SNP）** から行います。
@@ -133,8 +83,9 @@ Rev4 では、ソースコードを書き換えて再ビルドすることなく
 * **`&aml_tog`（Auto Mouse Layer ON/OFF切替）**:
   * トラックボール操作時にレイヤー 6（マウス操作レイヤー）へ自動遷移する機能の**有効 / 無効**をトグルします。OFF にするとボールを動かしてもレイヤーが切り替わらず、純粋なカーソル移動のみが行われます。
 * **`&cpi_inc` / `&cpi_dec`（感度調整）**:
-  * トラックボールの解像度（CPI）を 1 段階ずつ調整します（全 16 段階: 608 〜 4826 CPI）。
-* ※ ドングル OLED 画面を使用している場合、現在の CPI や各制御状態が画面上にリアルタイム表示されます。
+  * トラックボールの解像度（CPI）を 1 段階ずつ調整します（**全 15 段階: 200 〜 3200 CPI**）。
+  * 設定テーブル: `200`, `400`, `600`, `800`, `1000` (デフォルト), `1200`, `1400`, `1600`, `1800`, `2000`, `2200`, `2400`, `2600`, `2800`, `3200` CPI
+  * ※ ドングル OLED 画面上に現在の CPI がリアルタイム表示されます。
 
 ### 3. レイヤー別トラックボール動作
 * **レイヤー 0 (Base / DEF)**: 通常のキー入力レイヤー。
@@ -147,7 +98,7 @@ Rev4 では、ソースコードを書き換えて再ビルドすることなく
 
 ## ファームウェア書き込み手順
 
-各モジュール（右手、左手、ドングル、フットスイッチ）へ対応するファームウェアを書き込みます：
+各モジュール（ドングル、右手、左手、フットスイッチ）へ対応するファームウェアを書き込みます：
 
 1. **バッテリー駆動スイッチを OFF** にします（バッテリー給電下では書き込み後の自動リセットが正常に行われないため）。
 2. 書き込むデバイスを USB ケーブルで PC に接続します。
@@ -172,20 +123,15 @@ Rev4 では、ソースコードを書き換えて再ビルドすることなく
    cd zmk-config-mtk64
    ```
 3. **作業ブランチへ切り替え**:
-   * Bluetooth 接続構成をカスタマイズする場合:
-     ```sh
-     git checkout right_left_rev4
-     ```
-   * 1000Hz ドングル接続をカスタマイズする場合:
-     ```sh
-     git checkout right_left_dongle_rev4
-     ```
+   ```sh
+   git checkout right_left_dongle_rev3
+   ```
 4. **編集とプッシュ**:
    * `config/mtk64.keymap` などを編集後、コミットしてプッシュします：
      ```sh
      git add .
      git commit -m "feat: customize keymap"
-     git push origin <作業ブランチ名>
+     git push origin right_left_dongle_rev3
      ```
 5. **ファームウェアのダウンロード**:
    * プッシュすると GitHub Actions が自動実行され、ビルド完了後にフォーク先リポジトリの **「Releases」** または Actions 画面の **「Artifacts」** から ZIP ファイルをダウンロードできます。

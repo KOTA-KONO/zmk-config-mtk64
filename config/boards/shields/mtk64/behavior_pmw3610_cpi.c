@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-#define DT_DRV_COMPAT zmk_behavior_paw32xx_cpi
+#define DT_DRV_COMPAT zmk_behavior_pmw3610_cpi
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
-#include <zephyr/input/input_paw32xx.h>
+#include <zephyr/input/input_pmw3610.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
@@ -22,17 +22,23 @@
 #include <zmk/split/transport/central.h>
 #include <zmk/split/transport/types.h>
 
+#include "pmw3610_cpi_changed.h"
 #include "paw32xx_cpi_changed.h"
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
+ZMK_EVENT_IMPL(zmk_pmw3610_cpi_changed);
 ZMK_EVENT_IMPL(zmk_paw32xx_cpi_changed);
 
-#define CPI_LEVEL_COUNT 16
+#define CPI_LEVEL_COUNT 15
 static const uint16_t cpi_levels[CPI_LEVEL_COUNT] = {
-    608,  800,  1000, 1200, 1400, 1600, 1800, 2000,
-    2300, 2600, 3000, 3400, 3800, 4200, 4500, 4826};
-static uint8_t current_cpi_idx = 5; // Default: 1600 CPI
+    200,  400,  600,  800,  1000, 1200, 1400, 1600,
+    1800, 2000, 2200, 2400, 2600, 2800, 3200};
+static uint8_t current_cpi_idx = 4; // Default: 1000 CPI
+
+uint16_t zmk_pmw3610_cpi_get_current(void) {
+    return cpi_levels[current_cpi_idx];
+}
 
 uint16_t zmk_paw32xx_cpi_get_current(void) {
     return cpi_levels[current_cpi_idx];
@@ -51,30 +57,31 @@ struct behavior_cpi_config {
 
 static void apply_and_save_cpi(void) {
   uint16_t cpi = cpi_levels[current_cpi_idx];
-  LOG_INF("PAW32xx CPI target updated to %u (idx: %d)", cpi, current_cpi_idx);
+  LOG_INF("PMW3610 CPI target updated to %u (idx: %d)", cpi, current_cpi_idx);
 
-  // 1. Local trackball device check (if running directly on right half)
+  // 1. Local trackball device check (if running directly on peripheral/half)
   const struct device *dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(trackball));
   if (dev && device_is_ready(dev)) {
-    int ret = paw32xx_set_resolution(dev, cpi);
+    int ret = pmw3610_set_resolution(dev, cpi);
     if (ret == 0) {
-      LOG_INF("Local PAW32xx CPI set to %u", cpi);
+      LOG_INF("Local PMW3610 CPI set to %u", cpi);
     } else {
-      LOG_ERR("Failed to set local PAW32xx CPI: %d", ret);
+      LOG_ERR("Failed to set local PMW3610 CPI: %d", ret);
     }
   }
 
   // 2. Save to NVS
 #if IS_ENABLED(CONFIG_SETTINGS)
-  settings_save_one("paw32xx/cpi", &current_cpi_idx, sizeof(current_cpi_idx));
+  settings_save_one("pmw3610/cpi", &current_cpi_idx, sizeof(current_cpi_idx));
 #endif
 
-  // 4. Notify OLED display widget
+  // 3. Notify display widget (both native pmw3610 and dongle display paw32xx compatibility event)
+  raise_zmk_pmw3610_cpi_changed((struct zmk_pmw3610_cpi_changed){.cpi = cpi});
   raise_zmk_paw32xx_cpi_changed((struct zmk_paw32xx_cpi_changed){.cpi = cpi});
 }
 
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
-                                     struct zmk_behavior_binding_event event) {
+                                      struct zmk_behavior_binding_event event) {
   const struct device *dev = zmk_behavior_get_binding(binding->behavior_dev);
   if (!dev) {
     return ZMK_BEHAVIOR_OPAQUE;
@@ -105,7 +112,7 @@ static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
   // 1. 自分自身の処理（親機ならOLED表示更新＋フラッシュ保存、子機なら実機感度変更＋フラッシュ保存）
   apply_and_save_cpi();
 
-  // 2. 親機側で実行された場合、キーを押した子機（右手 ID: 2）にだけピンポイントで転送
+  // 2. 親機側で実行された場合、キーを押した子機（右手 ID: 2 / 左手 ID: 1）にピンポイントで転送
 #if IS_ENABLED(CONFIG_ZMK_SPLIT) && IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
   if (event.source != ZMK_POSITION_STATE_CHANGE_SOURCE_LOCAL) {
     zmk_split_central_invoke_behavior(event.source, binding, event, true);
@@ -130,7 +137,7 @@ static const struct behavior_driver_api behavior_cpi_driver_api = {
 };
 
 #if IS_ENABLED(CONFIG_SETTINGS)
-static int paw32xx_cpi_settings_set(const char *name, size_t len,
+static int pmw3610_cpi_settings_set(const char *name, size_t len,
                                     settings_read_cb read_cb, void *cb_arg) {
   const char *next;
   if (settings_name_steq(name, "cpi", &next) && !next) {
@@ -149,8 +156,8 @@ static int paw32xx_cpi_settings_set(const char *name, size_t len,
   return -ENOENT;
 }
 
-SETTINGS_STATIC_HANDLER_DEFINE(paw32xx, "paw32xx", NULL,
-                               paw32xx_cpi_settings_set, NULL, NULL);
+SETTINGS_STATIC_HANDLER_DEFINE(pmw3610, "pmw3610", NULL,
+                               pmw3610_cpi_settings_set, NULL, NULL);
 #endif
 
 #define CPI_BEHAVIOR_INIT(n)                                                   \

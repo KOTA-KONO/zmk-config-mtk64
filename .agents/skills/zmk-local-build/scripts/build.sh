@@ -2,7 +2,7 @@
 set -e
 
 # ==============================================================================
-# mtk64ebt ドングル接続 (1000Hz ESB) ローカルビルドスクリプト (right_left_dongle_rev4)
+# mtk64ebt ドングル接続 (1000Hz ESB) ローカルビルドスクリプト (right_left_dongle_rev3)
 # ==============================================================================
 # PC ↔ ドングル(USB Central) ↔ 左右手/フット(1000Hz ESB 超低遅延通信)
 # ==============================================================================
@@ -36,6 +36,7 @@ build_dongle() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_DONGLE rgbled_adapter dongle_display" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DSNIPPET="studio-rpc-usb-uart" \
       -DCONFIG_ZMK_STUDIO=y
     cp "${WORKSPACE}/build/dongle_display/zephyr/zmk.uf2" "${OUTPUT_DIR}/mtk64_DONGLE_display.uf2"
@@ -53,6 +54,7 @@ build_dongle_nodisplay() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_DONGLE rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DSNIPPET="studio-rpc-usb-uart" \
       -DCONFIG_ZMK_STUDIO=y \
       -DCONFIG_ZMK_DISPLAY=n
@@ -74,6 +76,7 @@ build_right_dongle() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_R rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n \
       -DCONFIG_ZMK_BLE=n \
       -DCONFIG_ZMK_SPLIT_BLE=n \
@@ -94,6 +97,7 @@ build_left_dongle() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_L rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n \
       -DCONFIG_ZMK_BLE=n \
       -DCONFIG_ZMK_SPLIT_BLE=n \
@@ -114,6 +118,7 @@ build_foot_dongle() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_FOOT rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n \
       -DCONFIG_ZMK_BLE=n \
       -DCONFIG_ZMK_SPLIT_BLE=n \
@@ -137,6 +142,7 @@ build_leftball_l() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_leftball_L rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n \
       -DCONFIG_ZMK_BLE=n \
       -DCONFIG_ZMK_SPLIT_BLE=n \
@@ -157,6 +163,7 @@ build_leftball_r() {
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="mtk64_leftball_R rgbled_adapter" \
       -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n \
       -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n \
       -DCONFIG_ZMK_BLE=n \
       -DCONFIG_ZMK_SPLIT_BLE=n \
@@ -179,7 +186,8 @@ build_reset() {
       -DZephyr-sdk_DIR="$SDK_DIR" \
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/arm-none-eabi-g++ \
       -DSHIELD="settings_reset" \
-      -DZMK_CONFIG="${REPO_ROOT}/config"
+      -DZMK_CONFIG="${REPO_ROOT}/config" \
+      -DCONFIG_NRF_SECURITY=n
     cp "${WORKSPACE}/build/reset/zephyr/zmk.uf2" "${OUTPUT_DIR}/settings_reset.uf2"
     echo "-> Settings reset firmware built: ${OUTPUT_DIR}/settings_reset.uf2"
 }
@@ -214,6 +222,18 @@ case "$TARGET" in
         build_leftball_l
         build_leftball_r
         build_dongle
+        ;;
+    leftball_l)
+        build_leftball_l
+        ;;
+    leftball_r)
+        build_leftball_r
+        ;;
+    right|right_dongle)
+        build_right_dongle
+        ;;
+    left|left_dongle)
+        build_left_dongle
         ;;
     foot|FOOT)
         build_foot_dongle

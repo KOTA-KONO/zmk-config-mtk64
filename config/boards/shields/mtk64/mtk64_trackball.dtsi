@@ -32,13 +32,15 @@
 
     trackball: trackball@0 {
         status = "disabled";
-        compatible = "pixart,paw32xx";
+        compatible = "pixart,pmw3610";
         reg = <0>;
         spi-max-frequency = <800000>;
         motion-gpios = <&gpio0 10 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-        res-cpi = <1558>;
+        res-cpi = <1000>;
         zephyr,axis-x = <INPUT_REL_X>;
         zephyr,axis-y = <INPUT_REL_Y>;
+        invert-x;
+        invert-y;
         force-awake;
     };
 };
@@ -59,13 +61,13 @@
 
     behaviors {
         cpi_inc: cpi_inc {
-            compatible = "zmk,behavior-paw32xx-cpi";
+            compatible = "zmk,behavior-pmw3610-cpi";
             #binding-cells = <0>;
             cmd = <0>;
         };
 
         cpi_dec: cpi_dec {
-            compatible = "zmk,behavior-paw32xx-cpi";
+            compatible = "zmk,behavior-pmw3610-cpi";
             #binding-cells = <0>;
             cmd = <1>;
         };

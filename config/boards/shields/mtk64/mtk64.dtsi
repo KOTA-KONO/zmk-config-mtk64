@@ -184,13 +184,13 @@
 
     behaviors {
         cpi_inc: cpi_inc {
-            compatible = "zmk,behavior-paw32xx-cpi";
+            compatible = "zmk,behavior-pmw3610-cpi";
             #binding-cells = <0>;
             cmd = <0>;
         };
 
         cpi_dec: cpi_dec {
-            compatible = "zmk,behavior-paw32xx-cpi";
+            compatible = "zmk,behavior-pmw3610-cpi";
             #binding-cells = <0>;
             cmd = <1>;
         };
