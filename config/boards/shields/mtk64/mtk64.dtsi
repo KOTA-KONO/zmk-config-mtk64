@@ -166,8 +166,8 @@
     zip_aml: zip_aml {
         compatible = "zmk,input-processor-aml";
         #input-processor-cells = <2>;
-        require-prior-idle-ms = <500>;
-        excluded-positions = <43 44 45 46 47>; // MB4, MB5, MB1, MB2, MB3
+        require-prior-idle-ms = <0>;
+        excluded-positions = <24 36 46 47 50 51>; // Ctrl, Shift, comma/MB1, dot/MB2, Alt, GUI
     };
 
     zip_scroll_inverter: zip_scroll_inverter {

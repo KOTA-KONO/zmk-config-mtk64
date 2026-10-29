@@ -10,7 +10,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Experimental branches build artifacts without replacing official releases.
+    if: github.ref == 'refs/heads/right_left_rev4' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
