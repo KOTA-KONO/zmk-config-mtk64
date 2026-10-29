@@ -10,6 +10,7 @@
 #include <drivers/input_processor.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 
 #include "aml_state_changed.h"
 
@@ -35,10 +36,6 @@ struct aml_config {
 
 #define MAX_LAYERS ZMK_KEYMAP_LAYERS_LEN
 
-#ifndef CONFIG_ZMK_INPUT_PROCESSOR_AML_MAX_ACTION_EVENTS
-#define CONFIG_ZMK_INPUT_PROCESSOR_AML_MAX_ACTION_EVENTS 4
-#endif
-
 struct aml_state {
     uint8_t toggle_layer;
     bool is_active;
@@ -49,10 +46,9 @@ struct aml_data {
     const struct device *dev;
     struct k_mutex lock;
     struct aml_state state;
+    struct k_work_delayable disable_work;
+    int64_t expires_at;
 };
-
-/* Static Work Queue Items */
-static struct k_work_delayable layer_disable_works[MAX_LAYERS];
 
 /* Position Search */
 static bool position_is_excluded(const struct aml_config *config, uint32_t position) {
@@ -84,65 +80,25 @@ static void update_layer_state(struct aml_state *state, bool activate) {
 
     state->is_active = activate;
     if (activate) {
-        zmk_keymap_layer_activate(state->toggle_layer, false);
+        zmk_keymap_layer_activate(zmk_keymap_layer_index_to_id(state->toggle_layer), false);
         LOG_DBG("AML Layer %d activated", state->toggle_layer);
     } else {
-        zmk_keymap_layer_deactivate(state->toggle_layer, false);
+        zmk_keymap_layer_deactivate(zmk_keymap_layer_index_to_id(state->toggle_layer), false);
         LOG_DBG("AML Layer %d deactivated", state->toggle_layer);
     }
 }
 
-struct layer_state_action {
-    uint8_t layer;
-    bool activate;
-};
-
-K_MSGQ_DEFINE(aml_action_msgq, sizeof(struct layer_state_action),
-              CONFIG_ZMK_INPUT_PROCESSOR_AML_MAX_ACTION_EVENTS, 4);
-
-static void layer_action_work_cb(struct k_work *work) {
-    const struct device *dev = DEVICE_DT_INST_GET(0);
-    if (!dev) {
-        return;
-    }
-    struct aml_data *data = (struct aml_data *)dev->data;
-
-    int ret = k_mutex_lock(&data->lock, K_FOREVER);
-    if (ret < 0) {
-        LOG_ERR("Error locking for updating AML layer: %d", ret);
-        return;
-    }
-
-    struct layer_state_action action;
-
-    while (k_msgq_get(&aml_action_msgq, &action, K_MSEC(10)) >= 0) {
-        if (!action.activate) {
-            if (zmk_keymap_layer_active(action.layer)) {
-                update_layer_state(&data->state, false);
-            }
-        } else {
-            if (g_aml_enabled) {
-                update_layer_state(&data->state, true);
-            }
-        }
-    }
-
-    k_mutex_unlock(&data->lock);
-}
-
-static K_WORK_DEFINE(layer_action_work, layer_action_work_cb);
-
-/* Work Queue Callback */
+/* Expiry is checked under the same lock as rescheduling: an already-running
+ * callback from an old deadline must not cancel a fresh motion activation. */
 static void layer_disable_callback(struct k_work *work) {
-    struct k_work_delayable *d_work = k_work_delayable_from_work(work);
-    int layer_index = ARRAY_INDEX(layer_disable_works, d_work);
-
-    struct layer_state_action action = {.layer = layer_index, .activate = false};
-
-    int ret = k_msgq_put(&aml_action_msgq, &action, K_MSEC(10));
-    if (ret == 0) {
-        k_work_submit(&layer_action_work);
+    struct aml_data *data = CONTAINER_OF(k_work_delayable_from_work(work),
+                                         struct aml_data, disable_work);
+    k_mutex_lock(&data->lock, K_FOREVER);
+    if (data->expires_at > 0 && k_uptime_get() >= data->expires_at) {
+        data->expires_at = 0;
+        update_layer_state(&data->state, false);
     }
+    k_mutex_unlock(&data->lock);
 }
 
 /* Event Handlers */
@@ -155,7 +111,8 @@ static int handle_layer_state_changed(const struct device *dev, const zmk_event_
     if (!zmk_keymap_layer_active(zmk_keymap_layer_index_to_id(data->state.toggle_layer))) {
         LOG_DBG("Deactivating layer that was activated by AML processor");
         data->state.is_active = false;
-        k_work_cancel_delayable(&layer_disable_works[data->state.toggle_layer]);
+        data->expires_at = 0;
+        k_work_cancel_delayable(&data->disable_work);
     }
     ret = k_mutex_unlock(&data->lock);
     if (ret < 0) {
@@ -183,6 +140,8 @@ static int handle_position_state_changed(const struct device *dev, const zmk_eve
         if (!position_is_excluded(cfg, ev->position)) {
             LOG_DBG("Position not excluded, deactivating AML layer");
             update_layer_state(&data->state, false);
+            data->expires_at = 0;
+            k_work_cancel_delayable(&data->disable_work);
         }
     }
 
@@ -248,36 +207,29 @@ static int aml_handle_event(const struct device *dev, struct input_event *event,
         return -EINVAL;
     }
 
-    // AML が無効の場合は一時レイヤーを起動せず、入力イベントを素通しする
-    if (!g_aml_enabled) {
-        return ZMK_INPUT_PROC_CONTINUE;
-    }
-
     struct aml_data *data = (struct aml_data *)dev->data;
-
     int ret = k_mutex_lock(&data->lock, K_FOREVER);
     if (ret < 0) {
         return ret;
     }
 
     const struct aml_config *cfg = dev->config;
+    bool motion = event->type == INPUT_EV_REL && event->value != 0 &&
+                  (event->code == INPUT_REL_X || event->code == INPUT_REL_Y);
+    bool button = event->type == INPUT_EV_KEY &&
+                  event->code >= INPUT_BTN_0 && event->code <= INPUT_BTN_4;
 
-    data->state.toggle_layer = param1;
-
-    if (!data->state.is_active &&
+    /* Button events may extend an existing AML session, but cannot reopen it
+     * after a typing key has dismissed it. Motion has no queued activation. */
+    if (g_aml_enabled && motion &&
         !should_quick_tap(cfg, data->state.last_tapped_timestamp, k_uptime_get())) {
-        struct layer_state_action action = {.layer = param1, .activate = true};
-
-        int ret = k_msgq_put(&aml_action_msgq, &action, K_MSEC(10));
-        if (ret < 0) {
-            LOG_ERR("Failed to enqueue action to enable AML layer %d (%d)", param1, ret);
-        } else {
-            k_work_submit(&layer_action_work);
-        }
+        data->state.toggle_layer = param1;
+        update_layer_state(&data->state, true);
     }
 
-    if (param2 > 0) {
-        k_work_reschedule(&layer_disable_works[param1], K_MSEC(param2));
+    if (g_aml_enabled && data->state.is_active && (motion || button) && param2 > 0) {
+        data->expires_at = k_uptime_get() + param2;
+        k_work_reschedule(&data->disable_work, K_MSEC(param2));
     }
 
     k_mutex_unlock(&data->lock);
@@ -290,9 +242,7 @@ static int aml_init(const struct device *dev) {
     data->dev = dev;
     k_mutex_init(&data->lock);
 
-    for (int i = 0; i < MAX_LAYERS; i++) {
-        k_work_init_delayable(&layer_disable_works[i], layer_disable_callback);
-    }
+    k_work_init_delayable(&data->disable_work, layer_disable_callback);
 
     return 0;
 }
@@ -381,7 +331,8 @@ void zmk_aml_set_enabled(bool enabled) {
             k_mutex_lock(&data->lock, K_FOREVER);
             if (data->state.is_active) {
                 update_layer_state(&data->state, false);
-                k_work_cancel_delayable(&layer_disable_works[data->state.toggle_layer]);
+                data->expires_at = 0;
+                k_work_cancel_delayable(&data->disable_work);
             }
             k_mutex_unlock(&data->lock);
         }
